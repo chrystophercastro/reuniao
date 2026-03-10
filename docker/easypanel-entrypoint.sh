@@ -33,12 +33,10 @@ echo "    APP_PORT= ${APP_PORT}"
 echo ""
 
 # ---- 0. Configurar porta do Apache ----
-if [ "$APP_PORT" != "80" ]; then
-    echo "[*] Alterando porta do Apache para ${APP_PORT}..."
-    sed -i "s/Listen 80/Listen ${APP_PORT}/g" /etc/apache2/ports.conf
-    sed -i "s/:80/:${APP_PORT}/g" /etc/apache2/sites-available/000-default.conf
-    echo "[+] Apache na porta ${APP_PORT}"
-fi
+echo "[*] Configurando Apache na porta ${APP_PORT}..."
+# Sempre reescrever ports.conf com a porta correta
+echo "Listen ${APP_PORT}" > /etc/apache2/ports.conf
+echo "[+] Apache na porta ${APP_PORT}"
 
 # ---- 1. Resolver DNS do host MySQL ----
 echo "[*] Resolvendo DNS de '${DB_HOST}'..."
@@ -97,6 +95,23 @@ if [ "$MYSQL_OK" = false ]; then
     echo "============================================"
     echo " O Apache sera iniciado assim mesmo."
     echo " Acesse /setup.php para configurar manualmente."
+    echo ""
+    # Detectar tipo de erro para dar dica especifica
+    if echo "$RESULT" | grep -qi "Access denied"; then
+        echo " PROBLEMA: Usuario/senha rejeitados pelo MySQL."
+        echo ""
+        echo " O MySQL precisa permitir conexao do container."
+        echo " Execute no MySQL:"
+        echo ""
+        echo "   CREATE USER 'ti'@'%' IDENTIFIED BY 'SUA_SENHA';"
+        echo "   GRANT ALL PRIVILEGES ON *.* TO 'ti'@'%';"
+        echo "   FLUSH PRIVILEGES;"
+        echo ""
+        echo " Ou altere o user existente:"
+        echo "   ALTER USER 'ti'@'%' IDENTIFIED BY 'SUA_SENHA';"
+        echo "   GRANT ALL PRIVILEGES ON *.* TO 'ti'@'%';"
+        echo "   FLUSH PRIVILEGES;"
+    fi
     echo "============================================"
     echo ""
 fi
