@@ -1,0 +1,92 @@
+# ============================================
+# MeetingRoom Manager - Dockerfile (Easypanel)
+# ============================================
+# Deploy via Easypanel:
+#   1. Criar App (tipo Dockerfile)
+#   2. Criar Database MySQL
+#   3. Configurar variáveis de ambiente
+# ============================================
+FROM php:8.2-apache
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libicu-dev \
+    libcurl4-openssl-dev \
+    unzip \
+    git \
+    curl \
+    default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar extensões PHP
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_mysql \
+        mysqli \
+        gd \
+        zip \
+        intl \
+        opcache \
+        curl
+
+# Habilitar mod_rewrite
+RUN a2enmod rewrite headers
+
+# PHP config para produção
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+# PHP customizado
+RUN echo "upload_max_filesize = 10M\n\
+post_max_size = 12M\n\
+memory_limit = 256M\n\
+max_execution_time = 120\n\
+date.timezone = America/Sao_Paulo\n\
+display_errors = Off\n\
+log_errors = On\n\
+error_log = /var/log/php_errors.log" > /usr/local/etc/php/conf.d/custom.ini
+
+# Apache - app na RAIZ (sem /reuniao/)
+RUN echo '<VirtualHost *:80>\n\
+    ServerAdmin webmaster@localhost\n\
+    DocumentRoot /var/www/html\n\
+    <Directory /var/www/html>\n\
+        Options -Indexes +FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+
+# Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Diretório de trabalho
+WORKDIR /var/www/html
+
+# Copiar projeto
+COPY . /var/www/html/
+
+# Instalar dependências Composer
+RUN composer install --no-dev --optimize-autoloader --no-interaction 2>/dev/null || true
+
+# Criar diretórios necessários
+RUN mkdir -p /var/www/html/assets/img /var/www/html/assets/uploads
+
+# Permissões
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Script de inicialização
+COPY docker/easypanel-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 80
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["apache2-foreground"]

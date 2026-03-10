@@ -1,0 +1,6 @@
+.git
+.gitignore
+*.md
+*.log
+composer.phar
+api/debug_evolution.php

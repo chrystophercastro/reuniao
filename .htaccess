@@ -1,0 +1,17 @@
+RewriteEngine On
+
+# Redirecionar index para login
+RewriteCond %{REQUEST_URI} ^/$
+RewriteRule ^$ /views/login.php [L,R=302]
+
+# Bloquear acesso direto a arquivos sensíveis
+RewriteRule ^config/ - [F,L]
+RewriteRule ^models/ - [F,L]
+RewriteRule ^controllers/ - [F,L]
+RewriteRule ^docker/ - [F,L]
+RewriteRule ^database/ - [F,L]
+RewriteRule ^\.env - [F,L]
+RewriteRule ^composer\.(json|lock|phar) - [F,L]
+RewriteRule ^Dockerfile - [F,L]
+RewriteRule ^\.dockerignore - [F,L]
+RewriteRule ^easypanel\.json - [F,L]

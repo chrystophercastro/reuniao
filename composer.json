@@ -1,0 +1,14 @@
+{
+    "name": "meetingroom/manager",
+    "description": "Sistema de Reserva de Salas de Reunião",
+    "type": "project",
+    "require": {
+        "phpmailer/phpmailer": "^6.9"
+    },
+    "autoload": {
+        "classmap": [
+            "models/",
+            "controllers/"
+        ]
+    }
+}

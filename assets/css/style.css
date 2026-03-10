@@ -1,0 +1,507 @@
+/* ============================================
+   MeetingRoom Manager - Custom Styles
+   ============================================ */
+
+:root {
+    --primary: #2563EB;
+    --primary-dark: #1D4ED8;
+    --primary-light: #DBEAFE;
+    --secondary: #1E293B;
+    --background: #F1F5F9;
+    --card-bg: #FFFFFF;
+    --sidebar-width: 250px;
+    --navbar-height: 60px;
+    --success-light: #D1FAE5;
+    --warning-light: #FEF3C7;
+    --info-light: #DBEAFE;
+    --danger-light: #FEE2E2;
+}
+
+/* ---- General ---- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--background);
+    color: #334155;
+    overflow-x: hidden;
+}
+
+/* ---- Login Page ---- */
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.login-container {
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+}
+
+.login-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 40px 35px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-size: 32px;
+    color: white;
+}
+
+.login-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--secondary);
+}
+
+.login-header p {
+    font-size: 0.9rem;
+    color: #64748B;
+}
+
+.login-footer {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #E2E8F0;
+    text-align: center;
+}
+
+/* ---- Navbar ---- */
+.bg-primary-custom {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+}
+
+.navbar {
+    height: var(--navbar-height);
+    z-index: 1040;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* ---- Sidebar ---- */
+.bg-sidebar {
+    background-color: var(--secondary);
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    min-height: calc(100vh - var(--navbar-height));
+    margin-top: var(--navbar-height);
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1030;
+    transition: all 0.3s ease;
+    overflow-y: auto;
+}
+
+.sidebar-content {
+    padding: 10px 0;
+}
+
+.sidebar-link {
+    color: #94A3B8 !important;
+    padding: 12px 20px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    color: #FFFFFF !important;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--primary);
+}
+
+.sidebar-link.active {
+    color: #FFFFFF !important;
+    background-color: rgba(37, 99, 235, 0.2);
+    border-left-color: var(--primary);
+}
+
+.sidebar-link i {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+
+/* ---- Main Content ---- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--navbar-height);
+    min-height: calc(100vh - var(--navbar-height));
+    width: calc(100% - var(--sidebar-width));
+    transition: all 0.3s ease;
+}
+
+/* ---- Stat Cards ---- */
+.stat-card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.bg-primary-light { background-color: var(--primary-light) !important; }
+.bg-success-light { background-color: var(--success-light) !important; }
+.bg-warning-light { background-color: var(--warning-light) !important; }
+.bg-info-light    { background-color: var(--info-light) !important; }
+.bg-danger-light  { background-color: var(--danger-light) !important; }
+
+/* ---- Meeting List ---- */
+.meeting-color-bar {
+    width: 4px;
+    height: 40px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+/* ---- Room Cards ---- */
+.room-card {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.room-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.room-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* ---- Room Legend ---- */
+.room-legend-badge {
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 500;
+    color: white;
+}
+
+/* ---- Avatar Circle ---- */
+.avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* ---- Calendar Customization ---- */
+#calendar {
+    min-height: 650px;
+}
+
+.fc {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.3rem !important;
+    font-weight: 700;
+    color: var(--secondary);
+}
+
+.fc .fc-button {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    font-weight: 500;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    text-transform: capitalize;
+}
+
+.fc .fc-button:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+.fc .fc-button-active {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.fc .fc-today-button {
+    background-color: #64748B !important;
+    border-color: #64748B !important;
+}
+
+.fc .fc-today-button:hover {
+    background-color: #475569 !important;
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+    background-color: var(--primary-light) !important;
+}
+
+.fc .fc-timegrid-col.fc-day-today {
+    background-color: rgba(37, 99, 235, 0.05) !important;
+}
+
+.fc-event {
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+    font-size: 0.85rem !important;
+    cursor: pointer;
+    border: none !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.fc-event:hover {
+    opacity: 0.9;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.fc-timegrid-event {
+    border-radius: 6px !important;
+}
+
+.fc .fc-col-header-cell {
+    padding: 10px 0;
+    background-color: #F8FAFC;
+    font-weight: 600;
+    color: #475569;
+}
+
+.fc .fc-scrollgrid {
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fc td, .fc th {
+    border-color: #E2E8F0 !important;
+}
+
+/* ---- Modal Customization ---- */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+    border-bottom: none;
+    padding: 20px 25px;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    border-top: 1px solid #E2E8F0;
+    padding: 15px 25px;
+}
+
+/* ---- Cards ---- */
+.card {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+/* ---- Form Controls ---- */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+}
+
+.form-control,
+.form-select {
+    border-radius: 8px;
+    border-color: #CBD5E1;
+    padding: 10px 14px;
+}
+
+/* ---- Buttons ---- */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 8px 18px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* ---- Tables ---- */
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748B;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 12px 16px;
+}
+
+/* ---- Toast ---- */
+.toast {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* ---- Select2 Overrides ---- */
+.select2-container--bootstrap-5 .select2-selection {
+    border-radius: 8px !important;
+    border-color: #CBD5E1 !important;
+    min-height: 42px !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    background-color: var(--primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border-radius: 8px !important;
+    border-color: #CBD5E1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ---- Badges ---- */
+.badge {
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+/* ---- Scrollbar ---- */
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        z-index: 1050;
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .login-card {
+        padding: 30px 20px;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    #calendar {
+        min-height: 400px;
+    }
+}
+
+/* ---- Animations ---- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.card, .stat-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ---- Print ---- */
+@media print {
+    .sidebar, .navbar {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        margin-top: 0 !important;
+        width: 100% !important;
+    }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "meetingroom-manager",
+  "description": "Sistema de Reserva de Salas de Reunião com WhatsApp",
+  "logo": "",
+  "services": [
+    {
+      "type": "app",
+      "data": {
+        "serviceName": "meetingroom",
+        "source": {
+          "type": "github",
+          "owner": "<SEU_USUARIO>",
+          "repo": "reuniao",
+          "ref": "main",
+          "path": "/"
+        },
+        "build": {
+          "type": "dockerfile",
+          "file": "Dockerfile.easypanel"
+        },
+        "env": "DB_HOST=$(PROJECT_NAME)_meetingroom-db\nDB_PORT=3306\nDB_NAME=reuniao\nDB_USER=root\nDB_PASS=SuaSenhaForte123@\nADMIN_NAME=Administrador\nADMIN_EMAIL=admin@suaempresa.com\nADMIN_PASS=admin123\nTZ=America/Sao_Paulo",
+        "ports": [
+          {
+            "published": 80,
+            "target": 80,
+            "protocol": "tcp"
+          }
+        ],
+        "domains": [
+          {
+            "host": "$(EASYPANEL_DOMAIN)"
+          }
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "name": "uploads",
+            "mountPath": "/var/www/html/assets/img"
+          }
+        ]
+      }
+    },
+    {
+      "type": "mysql",
+      "data": {
+        "serviceName": "meetingroom-db",
+        "password": "SuaSenhaForte123@",
+        "image": "mysql:8.0",
+        "rootPassword": "SuaSenhaForte123@"
+      }
+    }
+  ]
+}
