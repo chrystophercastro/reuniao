@@ -1,7 +1,8 @@
 #!/bin/bash
 # ============================================
 # MeetingRoom Manager - Easypanel Entrypoint
-# Instalação automática via variáveis de ambiente
+# Usa getenv() do PHP para evitar problemas
+# com caracteres especiais nas senhas
 # ============================================
 
 APP_DIR="/var/www/html"
@@ -11,16 +12,16 @@ echo " MeetingRoom Manager"
 echo " Inicializando..."
 echo "=========================================="
 
-# ---- Variáveis com fallback ----
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-3306}"
-DB_NAME="${DB_NAME:-reuniao}"
-DB_USER="${DB_USER:-root}"
-DB_PASS="${DB_PASS:-}"
-ADMIN_NAME="${ADMIN_NAME:-Administrador}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@meetingroom.com}"
-ADMIN_PASS="${ADMIN_PASS:-admin123}"
-APP_PORT="${APP_PORT:-80}"
+# ---- Exportar variáveis com fallback para PHP getenv() ----
+export DB_HOST="${DB_HOST:-localhost}"
+export DB_PORT="${DB_PORT:-3306}"
+export DB_NAME="${DB_NAME:-reuniao}"
+export DB_USER="${DB_USER:-root}"
+export DB_PASS="${DB_PASS:-}"
+export ADMIN_NAME="${ADMIN_NAME:-Administrador}"
+export ADMIN_EMAIL="${ADMIN_EMAIL:-admin@meetingroom.com}"
+export ADMIN_PASS="${ADMIN_PASS:-admin123}"
+export APP_PORT="${APP_PORT:-80}"
 
 echo "[*] Configuracao detectada:"
 echo "    DB_HOST = ${DB_HOST}"
@@ -47,32 +48,32 @@ if command -v getent > /dev/null 2>&1; then
         echo "[+] ${DB_HOST} -> ${RESOLVED}"
     else
         echo "[!] Nao conseguiu resolver '${DB_HOST}'"
-        echo "    Possiveis causas:"
-        echo "    - Nome do host esta errado"
-        echo "    - O servico MySQL ainda nao subiu"
-        echo "    - No Easypanel, o hostname interno e geralmente o nome do servico"
     fi
 fi
 
-# ---- 2. Aguardar MySQL (com timeout, SEM abortar) ----
+# ---- 2. Aguardar MySQL (usa getenv do PHP, SEM interpolacao bash) ----
 echo "[*] Tentando conectar ao MySQL ${DB_HOST}:${DB_PORT}..."
 MAX_RETRIES=30
 RETRY=0
 MYSQL_OK=false
 
 while [ $RETRY -lt $MAX_RETRIES ]; do
-    RESULT=$(php -r "
+    RESULT=$(php -r '
+        $host = getenv("DB_HOST");
+        $port = getenv("DB_PORT");
+        $user = getenv("DB_USER");
+        $pass = getenv("DB_PASS");
         try {
-            \$pdo = new PDO(
-                'mysql:host=${DB_HOST};port=${DB_PORT}',
-                '${DB_USER}',
-                '${DB_PASS}'
+            $pdo = new PDO(
+                "mysql:host={$host};port={$port}",
+                $user,
+                $pass
             );
-            echo 'CONNECTED';
-        } catch (Exception \$e) {
-            echo 'FAIL:' . \$e->getMessage();
+            echo "CONNECTED";
+        } catch (Exception $e) {
+            echo "FAIL:" . $e->getMessage();
         }
-    " 2>&1)
+    ' 2>&1)
 
     if echo "$RESULT" | grep -q "CONNECTED"; then
         MYSQL_OK=true
@@ -81,7 +82,6 @@ while [ $RETRY -lt $MAX_RETRIES ]; do
     fi
 
     RETRY=$((RETRY + 1))
-    # Mostrar erro detalhado na 1a, a cada 5 e na ultima tentativa
     if [ $RETRY -eq 1 ] || [ $((RETRY % 5)) -eq 0 ] || [ $RETRY -eq $MAX_RETRIES ]; then
         ERRMSG=$(echo "$RESULT" | sed 's/FAIL://')
         echo "    ERRO: ${ERRMSG}"
@@ -97,36 +97,40 @@ if [ "$MYSQL_OK" = false ]; then
     echo "============================================"
     echo " O Apache sera iniciado assim mesmo."
     echo " Acesse /setup.php para configurar manualmente."
-    echo ""
-    echo " DICA: Verifique a variavel DB_HOST."
-    echo " No Easypanel, va no servico MySQL e copie"
-    echo " o hostname interno exato."
     echo "============================================"
     echo ""
 fi
 
-# ---- 3. Gerar config/database.php (sempre) ----
-echo "[*] Gerando configuracao do banco..."
-cat > "${APP_DIR}/config/database.php" << PHPEOF
-<?php
+# ---- 3. Gerar config/database.php via PHP (seguro para chars especiais) ----
+echo "[*] Gerando config/database.php..."
+php -r '
+    $host = getenv("DB_HOST");
+    $name = getenv("DB_NAME");
+    $user = getenv("DB_USER");
+    $pass = getenv("DB_PASS");
+    $port = getenv("DB_PORT");
+
+    $pass_escaped = addslashes($pass);
+
+    $content = "<?php
 /**
  * MeetingRoom Manager - Database Configuration
- * Gerado automaticamente pelo instalador Easypanel
+ * Gerado automaticamente pelo instalador
  */
 
-define('DB_HOST', '${DB_HOST}');
-define('DB_NAME', '${DB_NAME}');
-define('DB_USER', '${DB_USER}');
-define('DB_PASS', '${DB_PASS}');
-define('DB_PORT', ${DB_PORT});
-define('DB_CHARSET', 'utf8mb4');
+define(\"DB_HOST\", \"" . addslashes($host) . "\");
+define(\"DB_NAME\", \"" . addslashes($name) . "\");
+define(\"DB_USER\", \"" . addslashes($user) . "\");
+define(\"DB_PASS\", \"" . $pass_escaped . "\");
+define(\"DB_PORT\", " . intval($port) . ");
+define(\"DB_CHARSET\", \"utf8mb4\");
 
 function getConnection(): PDO
 {
     static \$pdo = null;
 
     if (\$pdo === null) {
-        \$dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        \$dsn = \"mysql:host=\" . DB_HOST . \";port=\" . DB_PORT . \";dbname=\" . DB_NAME . \";charset=\" . DB_CHARSET;
 
         \$options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -137,53 +141,62 @@ function getConnection(): PDO
         try {
             \$pdo = new PDO(\$dsn, DB_USER, DB_PASS, \$options);
         } catch (PDOException \$e) {
-            die("Erro de conexão com o banco de dados: " . \$e->getMessage());
+            die(\"Erro de conexao com o banco de dados: \" . \$e->getMessage());
         }
     }
 
     return \$pdo;
 }
-PHPEOF
+";
+    file_put_contents("/var/www/html/config/database.php", $content);
+    echo "OK";
+' 2>&1
+echo ""
 echo "[+] config/database.php gerado!"
 
 # ---- 4. Se MySQL conectou, criar tabelas automaticamente ----
 if [ "$MYSQL_OK" = true ]; then
 echo "[*] Criando banco de dados e tabelas..."
-php -r "
+php -r '
+    $host = getenv("DB_HOST");
+    $port = getenv("DB_PORT");
+    $name = getenv("DB_NAME");
+    $user = getenv("DB_USER");
+    $pass = getenv("DB_PASS");
+    $adminName  = getenv("ADMIN_NAME");
+    $adminEmail = getenv("ADMIN_EMAIL");
+    $adminPass  = getenv("ADMIN_PASS");
+
     try {
-        \$pdo = new PDO('mysql:host=${DB_HOST};port=${DB_PORT};charset=utf8mb4', '${DB_USER}', '${DB_PASS}', [
+        $pdo = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
         ]);
 
-        // Criar banco
-        \$pdo->exec(\"CREATE DATABASE IF NOT EXISTS \\\`${DB_NAME}\\\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\");
-        \$pdo->exec(\"USE \\\`${DB_NAME}\\\`\");
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $pdo->exec("USE `{$name}`");
 
-        // Tabela users
-        \$pdo->exec(\"CREATE TABLE IF NOT EXISTS users (
+        $pdo->exec("CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
             email VARCHAR(200) NOT NULL UNIQUE,
-            phone VARCHAR(20) DEFAULT '',
+            phone VARCHAR(20) DEFAULT \"\",
             password VARCHAR(255) NOT NULL,
-            role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+            role ENUM(\"admin\", \"user\") NOT NULL DEFAULT \"user\",
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // Tabela rooms
-        \$pdo->exec(\"CREATE TABLE IF NOT EXISTS rooms (
+        $pdo->exec("CREATE TABLE IF NOT EXISTS rooms (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
             description TEXT,
             capacity INT NOT NULL DEFAULT 1,
-            color VARCHAR(7) NOT NULL DEFAULT '#2563EB',
+            color VARCHAR(7) NOT NULL DEFAULT \"#2563EB\",
             created_by INT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // Tabela reservations
-        \$pdo->exec(\"CREATE TABLE IF NOT EXISTS reservations (
+        $pdo->exec("CREATE TABLE IF NOT EXISTS reservations (
             id INT AUTO_INCREMENT PRIMARY KEY,
             room_id INT NOT NULL,
             title VARCHAR(255) NOT NULL,
@@ -195,50 +208,46 @@ php -r "
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
             FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
             INDEX idx_room_datetime (room_id, start_datetime, end_datetime)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // Tabela reservation_participants
-        \$pdo->exec(\"CREATE TABLE IF NOT EXISTS reservation_participants (
+        $pdo->exec("CREATE TABLE IF NOT EXISTS reservation_participants (
             id INT AUTO_INCREMENT PRIMARY KEY,
             reservation_id INT NOT NULL,
             user_id INT NOT NULL,
             FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             UNIQUE KEY unique_participant (reservation_id, user_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // Tabela settings
-        \$pdo->exec(\"CREATE TABLE IF NOT EXISTS settings (
-            \\\`key\\\` VARCHAR(100) PRIMARY KEY,
-            \\\`value\\\` TEXT NOT NULL DEFAULT '',
+        $pdo->exec("CREATE TABLE IF NOT EXISTS settings (
+            `key` VARCHAR(100) PRIMARY KEY,
+            `value` TEXT NOT NULL DEFAULT \"\",
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        echo 'Tabelas OK. ';
+        echo "Tabelas OK. ";
 
-        // Admin padrão
-        \$stmt = \$pdo->prepare('SELECT id FROM users WHERE email = ?');
-        \$stmt->execute(['${ADMIN_EMAIL}']);
-        if (!\$stmt->fetch()) {
-            \$hash = password_hash('${ADMIN_PASS}', PASSWORD_DEFAULT);
-            \$stmt = \$pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, \"admin\")');
-            \$stmt->execute(['${ADMIN_NAME}', '${ADMIN_EMAIL}', \$hash]);
-            echo 'Admin criado.';
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$adminEmail]);
+        if (!$stmt->fetch()) {
+            $hash = password_hash($adminPass, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, \"admin\")");
+            $stmt->execute([$adminName, $adminEmail, $hash]);
+            echo "Admin criado.";
         } else {
-            echo 'Admin já existe.';
+            echo "Admin ja existe.";
         }
 
-    } catch (Exception \$e) {
-        echo 'ERRO: ' . \$e->getMessage();
+    } catch (Exception $e) {
+        echo "ERRO: " . $e->getMessage();
     }
-" 2>&1
+' 2>&1
 echo ""
 echo "[+] Banco instalado!"
 fi
 
 # ---- 5. Ajustar URLs (Easypanel roda na raiz /) ----
 echo "[*] Configurando URLs para Easypanel (raiz /)..."
-# Substituir todas as referências /reuniao/ por / nos arquivos PHP e JS
 find "${APP_DIR}" -type f \( -name "*.php" -o -name "*.js" \) \
     -not -path "*/vendor/*" \
     -not -path "*/node_modules/*" \
@@ -247,7 +256,7 @@ echo "[+] URLs ajustadas!"
 
 # ---- 6. Composer ----
 if [ ! -d "${APP_DIR}/vendor" ]; then
-    echo "[*] Instalando dependências do Composer..."
+    echo "[*] Instalando dependencias do Composer..."
     cd "${APP_DIR}"
     composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || true
     echo "[+] Dependencias instaladas!"
