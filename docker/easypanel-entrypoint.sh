@@ -12,18 +12,57 @@ echo " MeetingRoom Manager"
 echo " Inicializando..."
 echo "=========================================="
 
-# ---- Exportar variáveis com fallback para PHP getenv() ----
-export DB_HOST="${DB_HOST:-localhost}"
-export DB_PORT="${DB_PORT:-3306}"
-export DB_NAME="${DB_NAME:-reuniao}"
-export DB_USER="${DB_USER:-root}"
-export DB_PASS="${DB_PASS:-}"
-export ADMIN_NAME="${ADMIN_NAME:-Administrador}"
-export ADMIN_EMAIL="${ADMIN_EMAIL:-admin@meetingroom.com}"
-export ADMIN_PASS="${ADMIN_PASS:-admin123}"
-export APP_PORT="${APP_PORT:-80}"
+# ---- DEBUG: mostrar env vars ANTES de qualquer fallback ----
+echo "[DEBUG] Variaveis de ambiente RAW (via PHP getenv):"
+php -r '
+    $vars = ["DB_HOST","DB_PORT","DB_NAME","DB_USER","DB_PASS","ADMIN_NAME","ADMIN_EMAIL","ADMIN_PASS","APP_PORT","MYSQL_HOST","MYSQL_PORT","MYSQL_USER","MYSQL_PASSWORD","MYSQL_DATABASE"];
+    foreach ($vars as $v) {
+        $val = getenv($v);
+        if ($val !== false && $val !== "") {
+            if (stripos($v, "PASS") !== false || stripos($v, "PASSWORD") !== false) {
+                echo "    $v = (" . strlen($val) . " chars) [" . substr($val, 0, 3) . "...]" . PHP_EOL;
+            } else {
+                echo "    $v = $val" . PHP_EOL;
+            }
+        }
+    }
+' 2>&1
+echo ""
 
-echo "[*] Configuracao detectada:"
+# ---- Ler variáveis via PHP (seguro para chars especiais) ----
+# O bash pode interpretar # como comentário, então lemos tudo via PHP
+eval $(php -r '
+    $map = [
+        "DB_HOST"     => "localhost",
+        "DB_PORT"     => "3306",
+        "DB_NAME"     => "reuniao",
+        "DB_USER"     => "root",
+        "DB_PASS"     => "",
+        "ADMIN_NAME"  => "Administrador",
+        "ADMIN_EMAIL" => "admin@meetingroom.com",
+        "ADMIN_PASS"  => "admin123",
+        "APP_PORT"    => "80",
+    ];
+    foreach ($map as $key => $default) {
+        $val = getenv($key);
+        if ($val === false || $val === "") $val = $default;
+        // Exportar de forma segura para bash usando base64
+        echo "export {$key}_B64=\"" . base64_encode($val) . "\"\n";
+    }
+')
+
+# Decodificar de volta (seguro para qualquer caractere)
+export DB_HOST=$(echo "$DB_HOST_B64" | base64 -d)
+export DB_PORT=$(echo "$DB_PORT_B64" | base64 -d)
+export DB_NAME=$(echo "$DB_NAME_B64" | base64 -d)
+export DB_USER=$(echo "$DB_USER_B64" | base64 -d)
+export DB_PASS=$(echo "$DB_PASS_B64" | base64 -d)
+export ADMIN_NAME=$(echo "$ADMIN_NAME_B64" | base64 -d)
+export ADMIN_EMAIL=$(echo "$ADMIN_EMAIL_B64" | base64 -d)
+export ADMIN_PASS=$(echo "$ADMIN_PASS_B64" | base64 -d)
+export APP_PORT=$(echo "$APP_PORT_B64" | base64 -d)
+
+echo "[*] Configuracao final:"
 echo "    DB_HOST = ${DB_HOST}"
 echo "    DB_PORT = ${DB_PORT}"
 echo "    DB_NAME = ${DB_NAME}"
