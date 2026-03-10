@@ -73,8 +73,8 @@ echo ""
 
 # ---- 0. Configurar porta do Apache ----
 echo "[*] Configurando Apache na porta ${APP_PORT}..."
-# Sempre reescrever ports.conf com a porta correta
 echo "Listen ${APP_PORT}" > /etc/apache2/ports.conf
+echo "ServerName localhost" >> /etc/apache2/apache2.conf
 echo "[+] Apache na porta ${APP_PORT}"
 
 # ---- 1. Resolver DNS do host MySQL ----
@@ -275,7 +275,7 @@ php -r '
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS settings (
             `key` VARCHAR(100) PRIMARY KEY,
-            `value` TEXT NOT NULL DEFAULT \"\",
+            `value` TEXT,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
