@@ -1,17 +1,14 @@
 #!/bin/bash
 # ============================================
 # MeetingRoom Manager - Easypanel Entrypoint
-# Instalação 100% automática via variáveis
+# Instalação automática via variáveis de ambiente
 # ============================================
 
-set -e
-
 APP_DIR="/var/www/html"
-LOCK_FILE="${APP_DIR}/.installed"
 
 echo "=========================================="
-echo " 🏢 MeetingRoom Manager"
-echo " Inicializando para Easypanel..."
+echo " MeetingRoom Manager"
+echo " Inicializando..."
 echo "=========================================="
 
 # ---- Variáveis com fallback ----
@@ -23,52 +20,93 @@ DB_PASS="${DB_PASS:-}"
 ADMIN_NAME="${ADMIN_NAME:-Administrador}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@meetingroom.com}"
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
-APP_URL="${APP_URL:-}"
 APP_PORT="${APP_PORT:-80}"
 
-echo "[*] Configuração:"
-echo "    DB Host:  ${DB_HOST}:${DB_PORT}"
-echo "    DB Name:  ${DB_NAME}"
-echo "    DB User:  ${DB_USER}"
-echo "    Porta:    ${APP_PORT}"
+echo "[*] Configuracao detectada:"
+echo "    DB_HOST = ${DB_HOST}"
+echo "    DB_PORT = ${DB_PORT}"
+echo "    DB_NAME = ${DB_NAME}"
+echo "    DB_USER = ${DB_USER}"
+echo "    DB_PASS = (${#DB_PASS} caracteres)"
+echo "    APP_PORT= ${APP_PORT}"
+echo ""
 
 # ---- 0. Configurar porta do Apache ----
 if [ "$APP_PORT" != "80" ]; then
     echo "[*] Alterando porta do Apache para ${APP_PORT}..."
     sed -i "s/Listen 80/Listen ${APP_PORT}/g" /etc/apache2/ports.conf
     sed -i "s/:80/:${APP_PORT}/g" /etc/apache2/sites-available/000-default.conf
-    echo "[✓] Apache configurado na porta ${APP_PORT}"
+    echo "[+] Apache na porta ${APP_PORT}"
 fi
 
-# ---- 1. Aguardar MySQL ----
-echo "[*] Aguardando MySQL..."
-MAX_RETRIES=60
+# ---- 1. Resolver DNS do host MySQL ----
+echo "[*] Resolvendo DNS de '${DB_HOST}'..."
+if command -v getent > /dev/null 2>&1; then
+    RESOLVED=$(getent hosts "${DB_HOST}" 2>/dev/null | awk '{print $1}')
+    if [ -n "$RESOLVED" ]; then
+        echo "[+] ${DB_HOST} -> ${RESOLVED}"
+    else
+        echo "[!] Nao conseguiu resolver '${DB_HOST}'"
+        echo "    Possiveis causas:"
+        echo "    - Nome do host esta errado"
+        echo "    - O servico MySQL ainda nao subiu"
+        echo "    - No Easypanel, o hostname interno e geralmente o nome do servico"
+    fi
+fi
+
+# ---- 2. Aguardar MySQL (com timeout, SEM abortar) ----
+echo "[*] Tentando conectar ao MySQL ${DB_HOST}:${DB_PORT}..."
+MAX_RETRIES=30
 RETRY=0
-until php -r "
-    try {
-        new PDO(
-            'mysql:host=${DB_HOST};port=${DB_PORT}',
-            '${DB_USER}',
-            '${DB_PASS}'
-        );
-        echo 'OK';
-        exit(0);
-    } catch (Exception \$e) {
-        exit(1);
-    }
-" 2>/dev/null; do
+MYSQL_OK=false
+
+while [ $RETRY -lt $MAX_RETRIES ]; do
+    RESULT=$(php -r "
+        try {
+            \$pdo = new PDO(
+                'mysql:host=${DB_HOST};port=${DB_PORT}',
+                '${DB_USER}',
+                '${DB_PASS}'
+            );
+            echo 'CONNECTED';
+        } catch (Exception \$e) {
+            echo 'FAIL:' . \$e->getMessage();
+        }
+    " 2>&1)
+
+    if echo "$RESULT" | grep -q "CONNECTED"; then
+        MYSQL_OK=true
+        echo "[+] MySQL conectado!"
+        break
+    fi
+
     RETRY=$((RETRY + 1))
-    if [ $RETRY -ge $MAX_RETRIES ]; then
-        echo "[✗] MySQL não respondeu após ${MAX_RETRIES} tentativas. Abortando."
-        exit 1
+    # Mostrar erro detalhado na 1a, a cada 5 e na ultima tentativa
+    if [ $RETRY -eq 1 ] || [ $((RETRY % 5)) -eq 0 ] || [ $RETRY -eq $MAX_RETRIES ]; then
+        ERRMSG=$(echo "$RESULT" | sed 's/FAIL://')
+        echo "    ERRO: ${ERRMSG}"
     fi
     echo "    Tentativa ${RETRY}/${MAX_RETRIES}..."
-    sleep 2
+    sleep 3
 done
-echo "[✓] MySQL conectado!"
 
-# ---- 2. Gerar config/database.php ----
-echo "[*] Gerando configuração do banco..."
+if [ "$MYSQL_OK" = false ]; then
+    echo ""
+    echo "============================================"
+    echo " !! MySQL NAO conectou apos ${MAX_RETRIES} tentativas"
+    echo "============================================"
+    echo " O Apache sera iniciado assim mesmo."
+    echo " Acesse /setup.php para configurar manualmente."
+    echo ""
+    echo " DICA: Verifique a variavel DB_HOST."
+    echo " No Easypanel, va no servico MySQL e copie"
+    echo " o hostname interno exato."
+    echo "============================================"
+    echo ""
+fi
+
+# ---- 3. Gerar config/database.php (sempre) ----
+echo "[*] Gerando configuracao do banco..."
 cat > "${APP_DIR}/config/database.php" << PHPEOF
 <?php
 /**
@@ -106,9 +144,10 @@ function getConnection(): PDO
     return \$pdo;
 }
 PHPEOF
-echo "[✓] config/database.php gerado!"
+echo "[+] config/database.php gerado!"
 
-# ---- 3. Criar banco e tabelas (auto-install) ----
+# ---- 4. Se MySQL conectou, criar tabelas automaticamente ----
+if [ "$MYSQL_OK" = true ]; then
 echo "[*] Criando banco de dados e tabelas..."
 php -r "
     try {
@@ -191,43 +230,46 @@ php -r "
 
     } catch (Exception \$e) {
         echo 'ERRO: ' . \$e->getMessage();
-        exit(1);
     }
 " 2>&1
 echo ""
-echo "[✓] Banco instalado!"
+echo "[+] Banco instalado!"
+fi
 
-# ---- 4. Ajustar URLs (Easypanel roda na raiz /) ----
+# ---- 5. Ajustar URLs (Easypanel roda na raiz /) ----
 echo "[*] Configurando URLs para Easypanel (raiz /)..."
 # Substituir todas as referências /reuniao/ por / nos arquivos PHP e JS
 find "${APP_DIR}" -type f \( -name "*.php" -o -name "*.js" \) \
     -not -path "*/vendor/*" \
     -not -path "*/node_modules/*" \
     -exec sed -i 's|/reuniao/|/|g' {} + 2>/dev/null || true
-echo "[✓] URLs ajustadas!"
+echo "[+] URLs ajustadas!"
 
-# ---- 5. Composer ----
+# ---- 6. Composer ----
 if [ ! -d "${APP_DIR}/vendor" ]; then
     echo "[*] Instalando dependências do Composer..."
     cd "${APP_DIR}"
     composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || true
-    echo "[✓] Dependências instaladas!"
+    echo "[+] Dependencias instaladas!"
 fi
 
-# ---- 6. Permissões ----
-echo "[*] Ajustando permissões..."
+# ---- 7. Permissoes ----
+echo "[*] Ajustando permissoes..."
 chown -R www-data:www-data "${APP_DIR}"
 chmod -R 755 "${APP_DIR}"
 chmod -R 775 "${APP_DIR}/assets/img" 2>/dev/null || true
 
-# ---- 7. Marcar como instalado ----
-touch "${LOCK_FILE}"
-
+echo ""
 echo "=========================================="
-echo " ✅ MeetingRoom Manager - Pronto!"
+echo " MeetingRoom Manager - Apache subindo!"
 echo "=========================================="
-echo " Admin: ${ADMIN_EMAIL}"
-echo " Senha: ${ADMIN_PASS}"
+if [ "$MYSQL_OK" = true ]; then
+    echo " Login: ${ADMIN_EMAIL}"
+    echo " Senha: ${ADMIN_PASS}"
+else
+    echo " MySQL offline - use /setup.php"
+fi
+echo " Porta: ${APP_PORT}"
 echo "=========================================="
 
 # Executar Apache
