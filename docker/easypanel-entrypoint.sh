@@ -24,11 +24,21 @@ ADMIN_NAME="${ADMIN_NAME:-Administrador}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@meetingroom.com}"
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
 APP_URL="${APP_URL:-}"
+APP_PORT="${APP_PORT:-80}"
 
 echo "[*] Configuração:"
 echo "    DB Host:  ${DB_HOST}:${DB_PORT}"
 echo "    DB Name:  ${DB_NAME}"
 echo "    DB User:  ${DB_USER}"
+echo "    Porta:    ${APP_PORT}"
+
+# ---- 0. Configurar porta do Apache ----
+if [ "$APP_PORT" != "80" ]; then
+    echo "[*] Alterando porta do Apache para ${APP_PORT}..."
+    sed -i "s/Listen 80/Listen ${APP_PORT}/g" /etc/apache2/ports.conf
+    sed -i "s/:80/:${APP_PORT}/g" /etc/apache2/sites-available/000-default.conf
+    echo "[✓] Apache configurado na porta ${APP_PORT}"
+fi
 
 # ---- 1. Aguardar MySQL ----
 echo "[*] Aguardando MySQL..."

@@ -86,7 +86,7 @@ RUN chown -R www-data:www-data /var/www/html \
 COPY docker/easypanel-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 80
+EXPOSE ${APP_PORT:-80}
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["apache2-foreground"]
